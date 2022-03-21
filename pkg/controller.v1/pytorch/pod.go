@@ -30,6 +30,7 @@ import (
 	pyv1 "github.com/kubeflow/pytorch-operator/pkg/apis/pytorch/v1"
 	"github.com/kubeflow/tf-operator/pkg/common/jobcontroller"
 	pylogger "github.com/kubeflow/tf-operator/pkg/logger"
+	"github.com/kubeflow/tf-operator/pkg/util/k8sutil"
 	train_util "github.com/kubeflow/tf-operator/pkg/util/train"
 )
 
@@ -76,6 +77,10 @@ func (pc *PyTorchController) reconcilePods(
 		} else if len(podSlice) == 0 {
 			logger.Infof("Need to create new pod: %s-%d", rt, index)
 
+			if jobSuspended(job) {
+				logger.Warningf("job is Suspended %s/%s", job.Namespace, job.Name)
+				continue
+			}
 			//Pytorch Job will have exactly one Master pod available
 			if rtype == pyv1.PyTorchReplicaTypeMaster {
 				masterRole = true
@@ -87,8 +92,26 @@ func (pc *PyTorchController) reconcilePods(
 		} else {
 			// Check the status of the current pod.
 			pod := podSlice[0]
+			if jobSuspended(job) {
+				if k8sutil.IsPodActive(pod) {
+					logger.Infof("Deleting pods in suspended job: %s/%s", job.Namespace, job.Name)
+					if err := pc.PodControl.DeletePod(pod.Namespace, pod.Name, job); err != nil {
+						return err
+					}
+
+					jobKey, err := KeyFunc(job)
+					if err != nil {
+						utilruntime.HandleError(fmt.Errorf("couldn't get key for job object %#v: %v", job, err))
+						return err
+					}
+
+					expectationPodsKey := jobcontroller.GenExpectationPodsKey(jobKey, rt)
+					pc.Expectations.ExpectDeletions(expectationPodsKey, 1)
+				}
+			}
+
 			// Check if the pod is retryable.
-			if spec.RestartPolicy == common.RestartPolicyExitCode {
+			if spec.RestartPolicy == common.RestartPolicyExitCode || jobSuspended(job) {
 				var exitCode int32
 				for _, status := range pod.Status.ContainerStatuses {
 					state := status.State

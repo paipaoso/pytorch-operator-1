@@ -24,8 +24,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
-	pyv1 "github.com/kubeflow/pytorch-operator/pkg/apis/pytorch/v1"
 	common "github.com/kubeflow/common/job_controller/api/v1"
+	pyv1 "github.com/kubeflow/pytorch-operator/pkg/apis/pytorch/v1"
 	pylogger "github.com/kubeflow/tf-operator/pkg/logger"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -42,6 +42,10 @@ const (
 	pytorchJobFailedReason = "PyTorchJobFailed"
 	// pytorchJobRestarting is added in a job when it is restarting.
 	pytorchJobRestartingReason = "PyTorchJobRestarting"
+)
+
+const (
+	Suspended common.JobConditionType = "Suspended"
 )
 
 var (
@@ -158,6 +162,29 @@ func updatePyTorchJobConditions(job *pyv1.PyTorchJob, conditionType common.JobCo
 	return nil
 }
 
+func updatePyTorchJobConditionsByStatus(job *pyv1.PyTorchJob, conditionType common.JobConditionType, status v1.ConditionStatus, reason, message string) bool {
+	list := job.Status.Conditions
+	for i := range list {
+		if list[i].Type == conditionType {
+			if list[i].Status != status || list[i].Reason != reason || list[i].Message != message {
+				list[i].Status = status
+				list[i].LastTransitionTime = metav1.Now()
+				list[i].Reason = reason
+				list[i].Message = message
+				job.Status.Conditions = list
+				return true
+			}
+			return false
+		}
+	}
+	// A condition with that type doesn't exist in the list.
+	if status != v1.ConditionFalse {
+		job.Status.Conditions = append(job.Status.Conditions, newCondition(conditionType, reason, message))
+		return true
+	}
+	return false
+}
+
 // initializePyTorchReplicaStatuses initializes the PyTorchReplicaStatuses for replica.
 func initializePyTorchReplicaStatuses(job *pyv1.PyTorchJob, rtype pyv1.PyTorchReplicaType) {
 	commonType := common.ReplicaType(rtype)
@@ -254,6 +281,10 @@ func filterOutCondition(conditions []common.JobCondition, condType common.JobCon
 			continue
 		}
 		if condType == common.JobRunning && c.Type == common.JobRestarting {
+			continue
+		}
+
+		if condType == common.JobRestarting && c.Type == Suspended {
 			continue
 		}
 

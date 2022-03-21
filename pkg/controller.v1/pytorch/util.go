@@ -85,3 +85,9 @@ func AddInitContainerForWorkerPod(podTemplate *v1.PodTemplateSpec, param InitCon
 	podTemplate.Spec.InitContainers = append(podTemplate.Spec.InitContainers, containers...)
 	return nil
 }
+
+// jobSuspended returns whether a Job is suspended while taking the feature
+// gate into account.
+func jobSuspended(job *pyv1.PyTorchJob) bool {
+	return job.Spec.Suspend != nil && *job.Spec.Suspend
+}

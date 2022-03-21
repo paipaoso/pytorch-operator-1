@@ -482,6 +482,19 @@ func (pc *PyTorchController) reconcilePyTorchJobs(job *pyv1.PyTorchJob) error {
 				return err
 			}
 		}
+		if jobSuspended(job) {
+			if updatePyTorchJobConditionsByStatus(job, Suspended, v1.ConditionTrue, "JobSuspended", "Job suspended") {
+				logger.Info("PyTorchJobs Suspended")
+				pc.Recorder.Event(job, v1.EventTypeNormal, "Suspended", "Job suspended")
+			}
+		} else {
+			if updatePyTorchJobConditionsByStatus(job, Suspended, v1.ConditionFalse, "JobResumed", "Job Resumed") {
+				logger.Info("PyTorchJobs Resumed")
+				pc.Recorder.Event(job, v1.EventTypeNormal, "Resumed", "Job resumed")
+				now := metav1.Now()
+				job.Status.StartTime = &now
+			}
+		}
 	}
 
 	// No need to update the job if the status hasn't changed since last time.
