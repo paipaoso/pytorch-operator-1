@@ -570,7 +570,7 @@ func (pc *PyTorchController) pastBackoffLimit(job *pyv1.PyTorchJob, pods []*v1.P
 
 // pastActiveDeadline checks if job has ActiveDeadlineSeconds field set and if it is exceeded.
 func (pc *PyTorchController) pastActiveDeadline(job *pyv1.PyTorchJob) bool {
-	if job.Spec.ActiveDeadlineSeconds == nil || job.Status.StartTime == nil {
+	if job.Spec.ActiveDeadlineSeconds == nil || job.Status.StartTime == nil || jobSuspended(job) {
 		return false
 	}
 	now := metav1.Now()
