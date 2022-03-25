@@ -111,7 +111,7 @@ func (pc *PyTorchController) reconcilePods(
 			}
 
 			// Check if the pod is retryable.
-			if spec.RestartPolicy == common.RestartPolicyExitCode || jobSuspended(job) {
+			if spec.RestartPolicy == common.RestartPolicyExitCode {
 				var exitCode int32
 				for _, status := range pod.Status.ContainerStatuses {
 					state := status.State

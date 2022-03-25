@@ -42,6 +42,8 @@ const (
 	pytorchJobFailedReason = "PyTorchJobFailed"
 	// pytorchJobRestarting is added in a job when it is restarting.
 	pytorchJobRestartingReason = "PyTorchJobRestarting"
+	// pytorchJobRestarting is added in a job when it is suspend.
+	pytorchJobSuspendReason = "PyTorchJobSuspend"
 )
 
 const (
@@ -121,7 +123,14 @@ func (pc *PyTorchController) updateStatusSingle(job *pyv1.PyTorchJob, rtype pyv1
 	}
 
 	if failed > 0 {
-		if restart {
+		if jobSuspended(job) {
+			pylogger.LoggerForJob(job).Infof(" %d %s replica(s) failed because PyTorchJob %s is suspend ", failed, rtype, job.Name)
+			err := updatePyTorchJobConditions(job, Suspended, "JobSuspended", "Job suspended")
+			if err != nil {
+				pylogger.LoggerForJob(job).Infof("Append job condition error: %v", err)
+				return err
+			}
+		} else if restart {
 			msg := fmt.Sprintf("PyTorchJob %s is restarting because %d %s replica(s) failed.", job.Name, failed, rtype)
 			pc.Recorder.Event(job, v1.EventTypeWarning, pytorchJobRestartingReason, msg)
 			err := updatePyTorchJobConditions(job, common.JobRestarting, pytorchJobRestartingReason, msg)
@@ -259,7 +268,8 @@ func setCondition(status *common.JobStatus, condition common.JobCondition) {
 	currentCond := getCondition(*status, condition.Type)
 
 	// Do nothing if condition doesn't change
-	if currentCond != nil && currentCond.Status == condition.Status && currentCond.Reason == condition.Reason {
+	if currentCond != nil && currentCond.Status == condition.Status &&
+		currentCond.Reason == condition.Reason && condition.Type != Suspended {
 		return
 	}
 
@@ -269,31 +279,32 @@ func setCondition(status *common.JobStatus, condition common.JobCondition) {
 	}
 
 	// Append the updated condition to the
-	newConditions := filterOutCondition(status.Conditions, condition.Type)
+	newConditions := filterOutCondition(status.Conditions, condition)
 	status.Conditions = append(newConditions, condition)
 }
 
 // filterOutCondition returns a new slice of job conditions without conditions with the provided type.
-func filterOutCondition(conditions []common.JobCondition, condType common.JobConditionType) []common.JobCondition {
+func filterOutCondition(conditions []common.JobCondition, cond common.JobCondition) []common.JobCondition {
 	var newConditions []common.JobCondition
 	for _, c := range conditions {
-		if condType == common.JobRestarting && c.Type == common.JobRunning {
+		if cond.Type == common.JobRestarting && c.Type == common.JobRunning {
 			continue
 		}
-		if condType == common.JobRunning && c.Type == common.JobRestarting {
-			continue
-		}
-
-		if condType == common.JobRestarting && c.Type == Suspended {
+		if cond.Type == common.JobRunning && c.Type == common.JobRestarting {
 			continue
 		}
 
-		if c.Type == condType {
+		if cond.Type == common.JobRestarting && c.Type == Suspended && c.Status == v1.ConditionTrue {
+			continue
+		}
+
+		if c.Type == cond.Type {
 			continue
 		}
 
 		// Set the running condition status to be false when current condition failed or succeeded
-		if (condType == common.JobFailed || condType == common.JobSucceeded) && c.Type == common.JobRunning {
+		if (cond.Type == common.JobFailed || cond.Type == common.JobSucceeded ||
+			(cond.Type == Suspended && cond.Status == v1.ConditionTrue)) && c.Type == common.JobRunning {
 			c.Status = v1.ConditionFalse
 		}
 
