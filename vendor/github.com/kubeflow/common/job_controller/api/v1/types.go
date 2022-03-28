@@ -115,6 +115,7 @@ const (
 	// The training is freezing/pending.
 	JobRestarting JobConditionType = "Restarting"
 
+    JobParticalSucceed JobConditionType = "ParticalSucceed"
 	// JobSucceeded means all sub-resources (e.g. services/pods) of this job
 	// reached phase have terminated in success.
 	// The training is complete without error.

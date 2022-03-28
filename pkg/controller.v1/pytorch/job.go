@@ -5,12 +5,15 @@ import (
 	"strings"
 	"time"
 
+
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
+		"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1unstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
+		"k8s.io/apimachinery/pkg/api/errors"
 
 	common "github.com/kubeflow/common/job_controller/api/v1"
 	pyv1 "github.com/kubeflow/pytorch-operator/pkg/apis/pytorch/v1"
@@ -149,8 +152,36 @@ func (pc *PyTorchController) updatePyTorchJob(old, cur interface{}) {
 	}
 }
 
+func (pc *PyTorchController) DeletePod(namespace string, podID string, object runtime.Object, gracefulTerminationPeriodSeconds *int64) error {
+	accessor, err := meta.Accessor(object)
+	if err != nil {
+		return fmt.Errorf("object does not have ObjectMeta, %v", err)
+	}
+	pod, err := pc.KubeClientSet.CoreV1().Pods(namespace).Get( podID, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	if pod.DeletionTimestamp != nil {
+		log.Infof("pod %s/%s is terminating, skip deleting", pod.Namespace, pod.Name)
+		return nil
+	}
+	log.Infof("Controller %v deleting pod %v/%v", accessor.GetName(), namespace, podID)
+	// delete options
+	deleteoption := metav1.DeleteOptions{GracePeriodSeconds: gracefulTerminationPeriodSeconds}
+	if err := pc.KubeClientSet.CoreV1().Pods(namespace).Delete( podID, &deleteoption); err != nil {
+		pc.Recorder.Eventf(object, v1.EventTypeWarning, "FailedDeletePod", "Error deleting: %v", err)
+		return fmt.Errorf("unable to delete pods: %v", err)
+	} else {
+		pc.Recorder.Eventf(object, v1.EventTypeNormal, "SuccessfulDeletePod", "Deleted pod: %v", podID)
+	}
+	return nil
+	}
+
 // deletePodsAndServices deletes all the pods and master service.
-func (pc *PyTorchController) deletePodsAndServices(job *pyv1.PyTorchJob, pods []*v1.Pod, services []*v1.Service) error {
+func (pc *PyTorchController) deletePodsAndServices(job *pyv1.PyTorchJob, pods []*v1.Pod, services []*v1.Service, gracefulTerminationPeriodSeconds *int64) error {
 	if len(pods) == 0 {
 		return nil
 	}
@@ -165,7 +196,7 @@ func (pc *PyTorchController) deletePodsAndServices(job *pyv1.PyTorchJob, pods []
 		if *job.Spec.CleanPodPolicy == common.CleanPodPolicyRunning && pod.Status.Phase != v1.PodRunning {
 			continue
 		}
-		if err := pc.PodControl.DeletePod(pod.Namespace, pod.Name, job); err != nil {
+		if err := pc.DeletePod(pod.Namespace, pod.Name, job, gracefulTerminationPeriodSeconds); err != nil {
 			return err
 		}
 	}
