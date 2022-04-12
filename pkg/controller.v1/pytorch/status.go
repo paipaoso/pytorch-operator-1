@@ -127,7 +127,17 @@ func (pc *PyTorchController) updateStatusSingle(job *pyv1.PyTorchJob, rtype pyv1
 				}
 				pytorchJobsSuccessCount.Inc()
 			}
-		}
+		}else{
+			if running > 0 {
+			    if int(job.Status.ReplicaStatuses[commonType].Succeeded) >0{
+			        msg := fmt.Sprintf("PyTorchJob %s is PartialSucceed.", job.Name)
+				    err := updatePyTorchJobConditions(job, PartialSucceed, pytorchJobPartialSucceedReason, msg)
+				    if err != nil {
+					    pylogger.LoggerForJob(job).Infof("Append job condition error: %v", err)
+					    return err}
+			    }
+
+		}}
 	} else {
 		pylogger.LoggerForJob(job).Info("Invalid config: Job must contain master replica spec")
 		return errors.New("invalid config: Job must contain master replica spec")
@@ -262,14 +272,6 @@ func hasCondition(status common.JobStatus, condType common.JobConditionType) boo
 func isPartialSucceed(status common.JobStatus) bool {
 	if hasCondition(status, PartialSucceed){
 	return true
-	}else{
-	if status.ReplicaStatuses[common.ReplicaType(pyv1.PyTorchReplicaTypeWorker)] !=nil{
-	if status.ReplicaStatuses[common.ReplicaType(pyv1.PyTorchReplicaTypeWorker)].Succeeded >0{
-	return true
-	}else if status.ReplicaStatuses[common.ReplicaType(pyv1.PyTorchReplicaTypeMaster)] !=nil &&
-	 status.ReplicaStatuses[common.ReplicaType(pyv1.PyTorchReplicaTypeWorker)].Succeeded >0 {
-	 return true
-	}}
 	}
 	return false
 }
