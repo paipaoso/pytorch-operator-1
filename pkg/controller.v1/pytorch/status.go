@@ -44,12 +44,12 @@ const (
 	pytorchJobRestartingReason = "PyTorchJobRestarting"
 	// pytorchJobRestarting is added in a job when it is suspend.
 	pytorchJobSuspendReason = "PyTorchJobSuspend"
-    // pytorchJobPartialSucceed is added in a job when it is PartialSucceed.
+	// pytorchJobPartialSucceed is added in a job when it is PartialSucceed.
 	pytorchJobPartialSucceedReason = "PyTorchJobPartialSucceed"
 )
 
 const (
-	Suspended common.JobConditionType = "Suspended"
+	Suspended      common.JobConditionType = "Suspended"
 	PartialSucceed common.JobConditionType = "PartialSucceed"
 )
 
@@ -98,20 +98,21 @@ func (pc *PyTorchController) updateStatusSingle(job *pyv1.PyTorchJob, rtype pyv1
 	if ContainMasterSpec(job) {
 		if rtype == pyv1.PyTorchReplicaTypeMaster {
 			if running > 0 {
-			    if int(job.Status.ReplicaStatuses[commonType].Succeeded) >0{
-			        msg := fmt.Sprintf("PyTorchJob %s is PartialSucceed.", job.Name)
-				    err := updatePyTorchJobConditions(job, PartialSucceed, pytorchJobPartialSucceedReason, msg)
-				    if err != nil {
-					    pylogger.LoggerForJob(job).Infof("Append job condition error: %v", err)
-					    return err}
-			    }else{
-				msg := fmt.Sprintf("PyTorchJob %s is running.", job.Name)
-				err := updatePyTorchJobConditions(job, common.JobRunning, pytorchJobRunningReason, msg)
-				if err != nil {
-					pylogger.LoggerForJob(job).Infof("Append job condition error: %v", err)
-					return err
+				if int(job.Status.ReplicaStatuses[commonType].Succeeded) > 0 {
+					msg := fmt.Sprintf("PyTorchJob %s is PartialSucceed.", job.Name)
+					err := updatePyTorchJobConditions(job, PartialSucceed, pytorchJobPartialSucceedReason, msg)
+					if err != nil {
+						pylogger.LoggerForJob(job).Infof("Append job condition error: %v", err)
+						return err
+					}
+				} else {
+					msg := fmt.Sprintf("PyTorchJob %s is running.", job.Name)
+					err := updatePyTorchJobConditions(job, common.JobRunning, pytorchJobRunningReason, msg)
+					if err != nil {
+						pylogger.LoggerForJob(job).Infof("Append job condition error: %v", err)
+						return err
+					}
 				}
-			}
 			}
 			if expected == 0 {
 				msg := fmt.Sprintf("PyTorchJob %s is successfully completed.", job.Name)
@@ -260,16 +261,17 @@ func hasCondition(status common.JobStatus, condType common.JobConditionType) boo
 }
 
 func isPartialSucceed(status common.JobStatus) bool {
-	if hasCondition(status, PartialSucceed){
-	return true
-	}else{
-	if status.ReplicaStatuses[common.ReplicaType(pyv1.PyTorchReplicaTypeWorker)] !=nil{
-	if status.ReplicaStatuses[common.ReplicaType(pyv1.PyTorchReplicaTypeWorker)].Succeeded >0{
-	return true
-	}else if status.ReplicaStatuses[common.ReplicaType(pyv1.PyTorchReplicaTypeMaster)] !=nil &&
-	 status.ReplicaStatuses[common.ReplicaType(pyv1.PyTorchReplicaTypeWorker)].Succeeded >0 {
-	 return true
-	}}
+	if hasCondition(status, PartialSucceed) {
+		return true
+	} else {
+		if status.ReplicaStatuses[common.ReplicaType(pyv1.PyTorchReplicaTypeWorker)] != nil {
+			if status.ReplicaStatuses[common.ReplicaType(pyv1.PyTorchReplicaTypeWorker)].Succeeded > 0 {
+				return true
+			} else if status.ReplicaStatuses[common.ReplicaType(pyv1.PyTorchReplicaTypeMaster)] != nil &&
+				status.ReplicaStatuses[common.ReplicaType(pyv1.PyTorchReplicaTypeWorker)].Succeeded > 0 {
+				return true
+			}
+		}
 	}
 	return false
 }

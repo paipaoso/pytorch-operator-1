@@ -16,8 +16,7 @@
 package train
 
 func IsRetryableExitCode(exitCode int32) bool {
-	if exitCode == 1 || exitCode == 2 || exitCode == 126 ||
-		exitCode == 127 || exitCode == 128 || exitCode == 139 {
+	if exitCode == 1 || exitCode == 2 || exitCode == 126 || exitCode == 128 || exitCode == 139 {
 		// Refers to http://tldp.org/LDP/abs/html/exitcodes.html, we identify the following exit codes
 		// as permanent errors:
 		//   1: General errors
@@ -29,7 +28,7 @@ func IsRetryableExitCode(exitCode int32) bool {
 		return false
 	}
 
-	if exitCode == 130 || exitCode == 137 || exitCode == 143 {
+	if exitCode == 130 || exitCode == 137 || exitCode == 143 || exitCode == 127{
 		// We think it's retryable error if the container exits due to the following sys signals
 		// that are usually caused by transient issues(e.g. VM was rescheduled):
 		//   130(128+2): Container terminated by Control-C

@@ -360,12 +360,12 @@ func (pc *PyTorchController) reconcilePyTorchJobs(job *pyv1.PyTorchJob) error {
 
 	// If the PyTorchJob is terminated, delete all pods and services.
 	if isSucceeded(job.Status) || isFailed(job.Status) || isPartialSucceed(job.Status) {
-	    gracefulTerminationPeriodSeconds := int64(0)
-	    if isPartialSucceed(job.Status){
-	        gracefulTerminationPeriodSeconds = int64(1800)
-	        pc.Recorder.Event(job, v1.EventTypeNormal, "PartialSucceed", " Job Partial Succeed")
-	    }
-		if err := pc.deletePodsAndServices(job, pods, services, &gracefulTerminationPeriodSeconds); err != nil {
+		gracefulTerminationPeriodSeconds := int64(0)
+		if isPartialSucceed(job.Status) {
+			gracefulTerminationPeriodSeconds = int64(1800)
+			pc.Recorder.Event(job, v1.EventTypeNormal, "PartialSucceed", " Job Partial Succeed")
+		}
+		if err := pc.deletePodsAndServices(job, pods, services, &gracefulTerminationPeriodSeconds, false); err != nil {
 			return err
 		}
 
@@ -432,8 +432,8 @@ func (pc *PyTorchController) reconcilePyTorchJobs(job *pyv1.PyTorchJob) error {
 	}
 
 	if jobExceedsLimit {
-	    gracefulTerminationPeriodSeconds := int64(0)
-		if err := pc.deletePodsAndServices(job, pods, services, &gracefulTerminationPeriodSeconds); err != nil {
+		gracefulTerminationPeriodSeconds := int64(0)
+		if err := pc.deletePodsAndServices(job, pods, services, &gracefulTerminationPeriodSeconds, false); err != nil {
 			return err
 		}
 

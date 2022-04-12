@@ -45,7 +45,7 @@ type PyTorchJobSpec struct {
 	// before it is terminated. Must be a positive integer.
 	// This setting applies only to pods where restartPolicy is OnFailure or Always.
 	// +optional
-	ActiveDeadlineSeconds *int64 `json:"activeDeadlineSeconds,omitempty"`
+	ActiveDeadlineSeconds *int64 `json:"activeDeadlinefSeconds,omitempty"`
 
 	// Number of retries before marking this job as failed.
 	// +optional

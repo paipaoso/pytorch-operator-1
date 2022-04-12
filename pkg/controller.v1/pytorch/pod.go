@@ -124,9 +124,24 @@ func (pc *PyTorchController) reconcilePods(
 				}
 				if pod.Status.Phase == v1.PodFailed && train_util.IsRetryableExitCode(exitCode) {
 					logger.Infof("Need to restart the pod: %v.%v", pod.Namespace, pod.Name)
-					if err := pc.PodControl.DeletePod(pod.Namespace, pod.Name, job); err != nil {
+
+					pods, err := pc.GetPodsForJob(job)
+					if err != nil {
+						logger.Warnf("getPodsForPyTorchJob error %v", err)
 						return err
 					}
+
+					services, err := pc.GetServicesForJob(job)
+					gracefulTerminationPeriodSeconds := int64(0)
+					if err != nil {
+						logger.Warnf("getServicesForPyTorchJob error %v", err)
+						return err
+					}
+					if err := pc.deletePodsAndServices(job, pods, services, &gracefulTerminationPeriodSeconds, true); err != nil {
+						return err
+					}
+					pc.Recorder.Eventf(job, v1.EventTypeNormal, "SuccessfulRestart", "Job: %v restart", job.Name)
+
 					restart = true
 				}
 			}
