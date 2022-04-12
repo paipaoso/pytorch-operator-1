@@ -98,20 +98,12 @@ func (pc *PyTorchController) updateStatusSingle(job *pyv1.PyTorchJob, rtype pyv1
 	if ContainMasterSpec(job) {
 		if rtype == pyv1.PyTorchReplicaTypeMaster {
 			if running > 0 {
-			    if int(job.Status.ReplicaStatuses[commonType].Succeeded) >0{
-			        msg := fmt.Sprintf("PyTorchJob %s is PartialSucceed.", job.Name)
-				    err := updatePyTorchJobConditions(job, PartialSucceed, pytorchJobPartialSucceedReason, msg)
-				    if err != nil {
-					    pylogger.LoggerForJob(job).Infof("Append job condition error: %v", err)
-					    return err}
-			    }else{
 				msg := fmt.Sprintf("PyTorchJob %s is running.", job.Name)
 				err := updatePyTorchJobConditions(job, common.JobRunning, pytorchJobRunningReason, msg)
 				if err != nil {
 					pylogger.LoggerForJob(job).Infof("Append job condition error: %v", err)
 					return err
 				}
-			}
 			}
 			if expected == 0 {
 				msg := fmt.Sprintf("PyTorchJob %s is successfully completed.", job.Name)
