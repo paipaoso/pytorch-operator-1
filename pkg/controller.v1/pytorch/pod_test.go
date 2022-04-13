@@ -178,7 +178,7 @@ func TestRestartPolicy(t *testing.T) {
 			specRestartPolicy := common.RestartPolicyExitCode
 			job.Spec.PyTorchReplicaSpecs[pyv1.PyTorchReplicaTypeMaster].RestartPolicy = specRestartPolicy
 			return tc{
-				job:                   job,
+				job: job,
 				expectedRestartPolicy: v1.RestartPolicyNever,
 				expectedType:          pyv1.PyTorchReplicaTypeMaster,
 			}
@@ -188,7 +188,7 @@ func TestRestartPolicy(t *testing.T) {
 			specRestartPolicy := common.RestartPolicyNever
 			job.Spec.PyTorchReplicaSpecs[pyv1.PyTorchReplicaTypeMaster].RestartPolicy = specRestartPolicy
 			return tc{
-				job:                   job,
+				job: job,
 				expectedRestartPolicy: v1.RestartPolicyNever,
 				expectedType:          pyv1.PyTorchReplicaTypeMaster,
 			}
@@ -198,7 +198,7 @@ func TestRestartPolicy(t *testing.T) {
 			specRestartPolicy := common.RestartPolicyAlways
 			job.Spec.PyTorchReplicaSpecs[pyv1.PyTorchReplicaTypeMaster].RestartPolicy = specRestartPolicy
 			return tc{
-				job:                   job,
+				job: job,
 				expectedRestartPolicy: v1.RestartPolicyAlways,
 				expectedType:          pyv1.PyTorchReplicaTypeMaster,
 			}
@@ -208,7 +208,7 @@ func TestRestartPolicy(t *testing.T) {
 			specRestartPolicy := common.RestartPolicyOnFailure
 			job.Spec.PyTorchReplicaSpecs[pyv1.PyTorchReplicaTypeMaster].RestartPolicy = specRestartPolicy
 			return tc{
-				job:                   job,
+				job: job,
 				expectedRestartPolicy: v1.RestartPolicyOnFailure,
 				expectedType:          pyv1.PyTorchReplicaTypeMaster,
 			}

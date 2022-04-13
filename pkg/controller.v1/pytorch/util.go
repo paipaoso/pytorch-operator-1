@@ -16,11 +16,14 @@ package pytorch
 
 import (
 	"fmt"
-
 	"bytes"
+	"time"
 	"html/template"
 
 	pyv1 "github.com/kubeflow/pytorch-operator/pkg/apis/pytorch/v1"
+		pylogger "github.com/kubeflow/tf-operator/pkg/logger"
+		metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+		common "github.com/kubeflow/common/job_controller/api/v1"
 	"github.com/kubeflow/pytorch-operator/pkg/common/config"
 	"github.com/kubernetes-sigs/yaml"
 	v1 "k8s.io/api/core/v1"
@@ -29,6 +32,7 @@ import (
 var (
 	errPortNotFound = fmt.Errorf("failed to found the port")
 )
+
 
 // GetPortFromPyTorchJob gets the port of pytorch container.
 func GetPortFromPyTorchJob(job *pyv1.PyTorchJob, rtype pyv1.PyTorchReplicaType) (int32, error) {
@@ -90,4 +94,25 @@ func AddInitContainerForWorkerPod(podTemplate *v1.PodTemplateSpec, param InitCon
 // gate into account.
 func jobSuspended(job *pyv1.PyTorchJob) bool {
 	return job.Spec.Suspend != nil && *job.Spec.Suspend
+}
+
+func needReconcile(job *pyv1.PyTorchJob) bool {
+	return !(job.Status.CompletionTime != nil && (isSucceeded(job.Status) || isFailed(job.Status)))
+
+}
+
+func SetSucceed(job *pyv1.PyTorchJob) error {
+	currentTime := metav1.Now()
+	gracefultime, _ := time.ParseDuration("30m")
+
+	if isPartialSucceed(job.Status) && currentTime.After(job.Status.PartialSucceedTime.Time.Add(gracefultime)) {
+	msg := fmt.Sprintf("PyTorchJob %s has succeed.", job.Name)
+		err := updatePyTorchJobConditions(job, common.JobSucceeded, pytorchJobSucceededReason, msg)
+		if err != nil {
+			pylogger.LoggerForJob(job).Infof("Append job condition error: %v", err)
+			return err
+		}
+		pytorchJobsSuccessCount.Inc()
+	}
+	return nil
 }

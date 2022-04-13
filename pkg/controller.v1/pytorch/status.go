@@ -44,13 +44,14 @@ const (
 	pytorchJobRestartingReason = "PyTorchJobRestarting"
 	// pytorchJobRestarting is added in a job when it is suspend.
 	pytorchJobSuspendReason = "PyTorchJobSuspend"
-    // pytorchJobPartialSucceed is added in a job when it is PartialSucceed.
+	// pytorchJobPartialSucceed is added in a job when it is PartialSucceed.
 	pytorchJobPartialSucceedReason = "PyTorchJobPartialSucceed"
 )
 
 const (
-	Suspended common.JobConditionType = "Suspended"
+	Suspended      common.JobConditionType = "Suspended"
 	PartialSucceed common.JobConditionType = "PartialSucceed"
+
 )
 
 var (
@@ -119,17 +120,24 @@ func (pc *PyTorchController) updateStatusSingle(job *pyv1.PyTorchJob, rtype pyv1
 				}
 				pytorchJobsSuccessCount.Inc()
 			}
-		}else{
+		} else {
 			if running > 0 {
-			    if int(job.Status.ReplicaStatuses[commonType].Succeeded) >0{
-			        msg := fmt.Sprintf("PyTorchJob %s is PartialSucceed.", job.Name)
-				    err := updatePyTorchJobConditions(job, PartialSucceed, pytorchJobPartialSucceedReason, msg)
-				    if err != nil {
-					    pylogger.LoggerForJob(job).Infof("Append job condition error: %v", err)
-					    return err}
-			    }
+				if int(job.Status.ReplicaStatuses[commonType].Succeeded) > 0 {
+					msg := fmt.Sprintf("PyTorchJob %s is PartialSucceed.", job.Name)
+					err := updatePyTorchJobConditions(job, PartialSucceed, pytorchJobPartialSucceedReason, msg)
+					if job.Status.PartialSucceedTime == nil {
+						now := metav1.Now()
+						job.Status.PartialSucceedTime = &now
+					}
 
-		}}
+					if err != nil {
+						pylogger.LoggerForJob(job).Infof("Append job condition error: %v", err)
+						return err
+					}
+				}
+
+			}
+		}
 	} else {
 		pylogger.LoggerForJob(job).Info("Invalid config: Job must contain master replica spec")
 		return errors.New("invalid config: Job must contain master replica spec")
@@ -262,8 +270,8 @@ func hasCondition(status common.JobStatus, condType common.JobConditionType) boo
 }
 
 func isPartialSucceed(status common.JobStatus) bool {
-	if hasCondition(status, PartialSucceed){
-	return true
+	if hasCondition(status, PartialSucceed) {
+		return true
 	}
 	return false
 }

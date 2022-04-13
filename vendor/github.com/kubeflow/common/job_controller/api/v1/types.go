@@ -42,6 +42,8 @@ type JobStatus struct {
 	// be set in happens-before order across separate operations.
 	// It is represented in RFC3339 form and is in UTC.
 	LastReconcileTime *metav1.Time `json:"lastReconcileTime,omitempty"`
+
+	PartialSucceedTime *metav1.Time `json:"partialsucceedTime,omitempty"`
 }
 
 // ReplicaType represents the type of the replica. Each operator needs to define its

@@ -60,7 +60,6 @@ github.com/imdario/mergo
 github.com/json-iterator/go
 # github.com/konsorten/go-windows-terminal-sequences v1.0.2
 github.com/konsorten/go-windows-terminal-sequences
-# github.com/kubeflow/common v0.1.0
 github.com/kubeflow/common/job_controller/api/v1
 # github.com/kubeflow/tf-operator v1.0.0-rc.0.0.20190916040037-5adee6f30c86
 github.com/kubeflow/tf-operator/pkg/common/jobcontroller
@@ -415,7 +414,7 @@ k8s.io/client-go/util/workqueue
 k8s.io/component-base/featuregate
 # k8s.io/klog v0.4.0
 k8s.io/klog
-# k8s.io/kube-openapi v0.0.0-20190228160746-b3a7cee44a30
+# k8s.io/kube-openapi v0.0.0-20190228160746-b3a7cee44a30 => k8s.io/kube-openapi v0.0.0-20190228160746-b3a7cee44a30
 k8s.io/kube-openapi/pkg/common
 k8s.io/kube-openapi/pkg/util/proto
 # k8s.io/kubernetes v1.15.9
